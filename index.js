@@ -12,6 +12,8 @@ app.post("/run-shell-tool", async (req, res) => {
     const { run_id, thread_id, tool_outputs } = req.body;
 
     const { cmd } = JSON.parse(tool_outputs[0].function.arguments);
+    console.log("🔁 Received command from OpenAI:", cmd);
+
     const execRes = await fetch("https://mvpcai-cloud.onrender.com/exec", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -19,6 +21,8 @@ app.post("/run-shell-tool", async (req, res) => {
     });
 
     const { output } = await execRes.json();
+    console.log("✅ Shell result:", output);
+
     const tool_call_id = tool_outputs[0].id;
 
     const submitRes = await fetch(`https://api.openai.com/v1/threads/${thread_id}/runs/${run_id}/submit_tool_outputs`, {
@@ -39,15 +43,17 @@ app.post("/run-shell-tool", async (req, res) => {
     });
 
     const data = await submitRes.json();
-    console.log("Submitted tool output:", data);
+    console.log("📤 Submitted tool output:", data);
     res.json({ success: true });
   } catch (err) {
-    console.error("Tool relay error:", err);
+    console.error("❌ Tool relay error:", err);
     res.status(500).json({ error: "Execution failed", detail: err.message });
   }
 });
 
+// ✅ Proper Render port binding
 const PORT = parseInt(process.env.PORT || "3000", 10);
+console.log("🌐 Using port:", PORT);
 app.listen(PORT, () => {
-  console.log(`Tool relay server listening on port ${PORT}`);
+  console.log(`🚀 Tool relay server listening on port ${PORT}`);
 });
