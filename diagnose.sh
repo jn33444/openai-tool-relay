@@ -4,8 +4,7 @@ CMD="$@"
 OUTPUT=$( { $CMD ; } 2>&1 ) || EXIT=$?
 echo "$OUTPUT"
 if [ -n "$EXIT" ] && [ "$EXIT" != "0" ]; then
-  ESCAPED=$(printf '%s\n' "$OUTPUT" | sed 's/"/\\"/g')
   cat <<JSON
-{"error":true,"exitCode":$EXIT,"command":"$CMD","log":"$ESCAPED"}
+{"error":true,"exitCode":$EXIT,"command":"$CMD","log":$(jq -Rs --arg out "$OUTPUT" '$out')}
 JSON
 fi
