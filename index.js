@@ -1,39 +1,54 @@
-const express = require("express");
-const cors    = require("cors");
-const morgan  = require("morgan");
-const { exec } = require("child_process");
-const { createClient } = require("@supabase/supabase-js");
+import express from "express";
+import cors     from "cors";
+import morgan   from "morgan";
+import dotenv   from "dotenv";
+import fetch    from "node-fetch";
 
-const app  = express();
-const PORT = process.env.PORT || 10000;
+dotenv.config();
 
+const {
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  COHERE_API_KEY,
+  PINECONE_API_KEY,
+  PINECONE_ENVIRONMENT,
+  PINECONE_INDEX,
+  OPENAI_API_KEY,
+  ASSISTANT_ID
+} = process.env;
+
+const app = express();
 app.use(cors());
-app.use(morgan("tiny"));
-app.use(express.json());
+app.use(morgan("dev"));
+app.use(express.json({ limit: "2mb" }));
 
-app.post("/exec", (req, res) => {
-  const { cmd } = req.body;
-  if (!cmd) return res.status(400).json({ error: "cmd required" });
-  exec(cmd, { timeout: 30000 }, (err, stdout, stderr) => {
-    if (err) return res.status(500).json({ error: stderr || String(err) });
-    res.json({ output: stdout });
-  });
-});
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-
-app.post("/supabase-tool", async (req, res) => {
+app.post("/chat", async (req, res) => {
   try {
-    const { bucket, prefix = "" } = req.body;
-    if (!bucket) return res.status(400).json({ error: "bucket required" });
-    const { data, error } = await supabase
-      .storage.from(bucket)
-      .list(prefix, { limit: 500, offset: 0, sortBy: { column: "name", order: "asc" } });
-    if (error) throw error;
-    res.json({ success: true, objects: data });
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
+    const userText = req.body.message ?? "";
+
+    /* ---------- add RAG context here later ---------- */
+
+    const ai = await fetch(
+      `https://api.openai.com/v1/assistants/${ASSISTANT_ID}/completions`,
+      {
+        method : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization : `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model : "gpt-4o",
+          prompt: userText
+        })
+      }
+    ).then(r => r.json());
+
+    res.json({ reply: ai.choices?.[0]?.message?.content ?? "" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "relay-error" });
   }
 });
 
-app.listen(PORT, () => console.log(`🌐 listening on :${PORT}`));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log("Relay listening on", PORT));
