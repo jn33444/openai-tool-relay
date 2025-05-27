@@ -51,4 +51,5 @@ app.post("/chat", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
+app.get("/", (_, res) => res.send("OK"));
 app.listen(PORT, () => console.log("Relay listening on", PORT));
